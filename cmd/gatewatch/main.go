@@ -8,10 +8,8 @@ import (
 	"syscall"
 
 	"github.com/iszsig/eve-gate-watch/internal/discord"
-	"github.com/iszsig/eve-gate-watch/internal/dscan"
 	"github.com/iszsig/eve-gate-watch/internal/httpapi"
 	"github.com/iszsig/eve-gate-watch/internal/intel"
-	"github.com/iszsig/eve-gate-watch/internal/ship"
 )
 
 func main() {
@@ -22,13 +20,7 @@ func main() {
 
 	repository := intel.NewMemoryRepository()
 
-	dScanner := dscan.NewFakeDScan([]ship.Ship{
-		{
-			Name: "Rifter",
-		},
-	})
-
-	intelService := intel.NewService(repository, dScanner)
+	intelService := intel.NewService(repository, nil)
 
 	// Http api
 	go func() {

@@ -8,9 +8,15 @@ import (
 	"syscall"
 
 	"github.com/istvzsig/eve-gate-watch/external/esi"
+	"github.com/istvzsig/eve-gate-watch/external/zkill"
 	"github.com/istvzsig/eve-gate-watch/internal/discord"
 	"github.com/istvzsig/eve-gate-watch/internal/httpapi"
 	"github.com/istvzsig/eve-gate-watch/internal/intel"
+)
+
+const (
+	esiBaseURL        = "https://esi.evetech.net/latest"
+	zkillboardBaseURL = "https://zkillboard.com/api"
 )
 
 func main() {
@@ -19,10 +25,10 @@ func main() {
 		log.Fatal("DISCORD_BOT_TOKEN is required")
 	}
 
-	const esiBaseURL = "https://esi.evetech.net/latest"
-
 	dScanner := esi.NewESIScanner(esiBaseURL)
-	intelService := intel.NewService(dScanner)
+	zkillClient := zkill.NewClient(zkillboardBaseURL)
+
+	intelService := intel.NewService(dScanner, zkillClient)
 
 	// Http api
 	go func() {
@@ -30,6 +36,7 @@ func main() {
 		handler := httpapi.NewHandler(intelService)
 
 		mux.HandleFunc("/api/dscan", handler.HandleDScan)
+		mux.HandleFunc("/api/pvp", handler.HandleRecentPVP)
 
 		log.Println("HTTP server listening on :8080")
 

@@ -6,13 +6,14 @@ import (
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/istvzsig/eve-gate-watch/internal/dscan"
 	"github.com/istvzsig/eve-gate-watch/internal/intel"
+	"github.com/istvzsig/eve-gate-watch/internal/utils"
 )
 
 const (
 	PingCommand  = "!ping"
 	DScanCommand = "!dscan"
+	PVPCommand   = "!pvp"
 )
 
 func CreateSession(token string) (*discordgo.Session, error) {
@@ -75,6 +76,11 @@ func dispatchCommands(
 		return
 	}
 
+	// pvp
+	if msgContent == PVPCommand || strings.HasPrefix(msgContent, PVPCommand+" ") {
+		dispatchPVPCommand(session, message, intelService)
+		return
+	}
 }
 
 func dispatchPingCommand(session *discordgo.Session, message *discordgo.MessageCreate) {
@@ -114,7 +120,7 @@ func dispatchDScanCommand(
 		return
 	}
 
-	messageText := formatDScan(result)
+	messageText := utils.FormatDScan(result)
 
 	_, err = session.ChannelMessageSend(
 		message.ChannelID,
@@ -125,47 +131,40 @@ func dispatchDScanCommand(
 	}
 }
 
-func formatDScan(result dscan.DScanResult) string {
-	return fmt.Sprintf(
-		"```text\n"+
-			"%s SYSTEM INTELLIGENCE\n"+
-			"--------------------------------\n"+
-			"Region             %s\n"+
-			"Constellation      %s\n"+
-			"Security           %.1f %s\n"+
-			"Planets            %d\n"+
-			"Stargates          %d\n"+
-			"Stations           %d\n"+
-			"\n"+
-			"LAST HOUR\n"+
-			"--------------------------------\n"+
-			"Ship jumps         %d\n"+
-			"Ship kills         %d\n"+
-			"Pod kills          %d\n"+
-			"NPC kills          %d\n"+
-			"```",
-		strings.ToUpper(result.SystemName),
-		result.RegionName,
-		result.ConstellationName,
-		result.SecurityStatus,
-		securityClass(result.SecurityStatus),
-		result.Planets,
-		result.Stargates,
-		result.Stations,
-		result.ShipJumps,
-		result.ShipKills,
-		result.PodKills,
-		result.NPCKills,
+func dispatchPVPCommand(
+	session *discordgo.Session,
+	message *discordgo.MessageCreate,
+	intelService *intel.Service,
+) {
+	systemName := strings.TrimSpace(
+		strings.TrimPrefix(message.Content, PVPCommand),
 	)
-}
 
-func securityClass(value float64) string {
-	switch {
-	case value >= 0.5:
-		return "HIGH SEC"
-	case value > 0.0:
-		return "LOW SEC"
-	default:
-		return "NULL SEC"
+	result, err := intelService.RecentPVP(systemName)
+	if err != nil {
+		log.Printf("pvp: %v", err)
+
+		_, sendErr := session.ChannelMessageSend(
+			message.ChannelID,
+			fmt.Sprintf(
+				"System `%s` not found.",
+				systemName,
+			),
+		)
+		if sendErr != nil {
+			log.Printf("send pvp error: %v", sendErr)
+		}
+
+		return
+	}
+
+	messageText := utils.FormatPVP(result)
+
+	_, err = session.ChannelMessageSend(
+		message.ChannelID,
+		messageText,
+	)
+	if err != nil {
+		log.Printf("send pvp result: %v", err)
 	}
 }

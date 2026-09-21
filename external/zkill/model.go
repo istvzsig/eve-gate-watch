@@ -7,6 +7,7 @@ type Killmail struct {
 	KillmailTime time.Time `json:"killmail_time"`
 	Victim       Victim    `json:"victim"`
 	ZKB          ZKB       `json:"zkb"`
+	ShipName     string    `json:"-"`
 }
 
 type Victim struct {

@@ -49,14 +49,14 @@ func (s *Service) RecentPVP(systemName string) (pvp.Result, error) {
 		kills = append(kills, pvp.Kill{
 			ID:         killmail.KillmailID,
 			OccurredAt: killmail.KillmailTime,
-			ShipName:   fmt.Sprint(killmail.Victim.ShipTypeID),
+			ShipName:   killmail.ShipName,
 			Value:      killmail.ZKB.TotalValue,
 			Solo:       killmail.ZKB.Solo,
 		})
 	}
 
 	return pvp.Result{
-		SystemName: systemName,
+		SystemName: strings.ToTitle(systemName),
 		Kills:      kills,
 	}, nil
 }

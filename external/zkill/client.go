@@ -68,36 +68,68 @@ func (c *Client) RecentPVP(
 	defer response.Body.Close()
 
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		body, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
+		body, _ := io.ReadAll(
+			io.LimitReader(response.Body, 4096),
+		)
 
 		return nil, fmt.Errorf(
 			"zKillboard returned %s: %s",
 			response.Status,
-			string(body),
+			strings.TrimSpace(string(body)),
 		)
 	}
 
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		return nil, fmt.Errorf("read zKillboard response: %w", err)
+		return nil, fmt.Errorf(
+			"read zKillboard response: %w",
+			err,
+		)
 	}
 
 	var killmails []Killmail
 
-	if err := json.Unmarshal(body, &killmails); err == nil {
-		return killmails, nil
+	if err := json.Unmarshal(body, &killmails); err != nil {
+		var apiError struct {
+			Error string `json:"error"`
+		}
+
+		if err := json.Unmarshal(body, &apiError); err == nil &&
+			apiError.Error != "" {
+			return nil, fmt.Errorf(
+				"zKillboard API error: %s",
+				apiError.Error,
+			)
+		}
+
+		return nil, fmt.Errorf(
+			"decode zKillboard response: %w",
+			err,
+		)
 	}
 
-	var apiError struct {
-		Error string `json:"error"`
+	typeNames := make(map[int64]string)
+
+	for i := range killmails {
+		typeID := killmails[i].Victim.ShipTypeID
+
+		if name, ok := typeNames[typeID]; ok {
+			killmails[i].ShipName = name
+			continue
+		}
+
+		name, err := c.typeResolver.ResolveType(typeID)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"resolve ship type %d: %w",
+				typeID,
+				err,
+			)
+		}
+
+		typeNames[typeID] = name
+		killmails[i].ShipName = name
 	}
 
-	if err := json.Unmarshal(body, &apiError); err == nil && apiError.Error != "" {
-		return nil, fmt.Errorf("zKillboard API error: %s", apiError.Error)
-	}
-
-	return nil, fmt.Errorf(
-		"decode zKillboard response: %s",
-		strings.TrimSpace(string(body)),
-	)
+	return killmails, nil
 }

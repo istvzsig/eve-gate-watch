@@ -122,65 +122,47 @@ func dispatchDscanCommand(
 }
 
 func formatDScan(result dscan.DScanResult) string {
-	var builder strings.Builder
+	security := formatSecurity(result.SecurityStatus)
 
-	fmt.Fprintf(
-		&builder,
-		"🛰️ %s INTEL\n\n",
+	return fmt.Sprintf(
+		"```ansi\n"+
+			"%s SYSTEM INTELLIGENCE\n"+
+			"--------------------------------\n"+
+			"Security           %s\n"+
+			"Planets            %d\n"+
+			"Stargates          %d\n"+
+			"Stations           %d\n"+
+			"\n"+
+			"LAST HOUR\n"+
+			"--------------------------------\n"+
+			"Ship jumps         %d\n"+
+			"Ship kills         %d\n"+
+			"Pod kills          %d\n"+
+			"NPC kills          %d\n"+
+			"```",
 		strings.ToUpper(result.SystemName),
-	)
-
-	fmt.Fprintf(
-		&builder,
-		"🛡️ Security: %.2f\n",
-		result.SecurityStatus,
-	)
-
-	fmt.Fprintf(
-		&builder,
-		"🪐 Planets: %d\n",
+		security,
 		result.Planets,
-	)
-
-	fmt.Fprintf(
-		&builder,
-		"🚪 Stargates: %d\n",
 		result.Stargates,
-	)
-
-	fmt.Fprintf(
-		&builder,
-		"🏭 Stations: %d\n\n",
 		result.Stations,
-	)
-
-	builder.WriteString("📊 LAST HOUR\n")
-
-	fmt.Fprintf(
-		&builder,
-		"🚀 Ship jumps: %d\n",
 		result.ShipJumps,
-	)
-
-	fmt.Fprintf(
-		&builder,
-		"💀 Ship kills: %d\n",
 		result.ShipKills,
-	)
-
-	fmt.Fprintf(
-		&builder,
-		"☠️ Pod kills: %d\n",
 		result.PodKills,
-	)
-
-	fmt.Fprintf(
-		&builder,
-		"🤖 NPC kills: %d",
 		result.NPCKills,
 	)
+}
 
-	return builder.String()
+func formatSecurity(value float64) string {
+	display := fmt.Sprintf("%.1f", value)
+
+	switch {
+	case value >= 0.5:
+		return fmt.Sprintf("\033[32m%s HIGH SEC\033[0m", display)
+	case value > 0.0:
+		return fmt.Sprintf("\033[33m%s LOW SEC\033[0m", display)
+	default:
+		return fmt.Sprintf("\033[31m%s NULL SEC\033[0m", display)
+	}
 }
 
 // func dispatchIntelCommand(

@@ -7,10 +7,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/iszsig/eve-gate-watch/external/esi"
-	"github.com/iszsig/eve-gate-watch/internal/discord"
-	"github.com/iszsig/eve-gate-watch/internal/httpapi"
-	"github.com/iszsig/eve-gate-watch/internal/intel"
+	"github.com/istvzsig/eve-gate-watch/external/esi"
+	"github.com/istvzsig/eve-gate-watch/internal/discord"
+	"github.com/istvzsig/eve-gate-watch/internal/httpapi"
+	"github.com/istvzsig/eve-gate-watch/internal/intel"
 )
 
 func main() {

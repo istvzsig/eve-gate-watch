@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/iszsig/eve-gate-watch/internal/dscan"
-	"github.com/iszsig/eve-gate-watch/internal/intel"
+	"github.com/istvzsig/eve-gate-watch/internal/dscan"
+	"github.com/istvzsig/eve-gate-watch/internal/intel"
 )
 
 const (

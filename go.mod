@@ -1,4 +1,4 @@
-module github.com/iszsig/eve-gate-watch
+module github.com/istvzsig/eve-gate-watch
 
 go 1.26.4
 

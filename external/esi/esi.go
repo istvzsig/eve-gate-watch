@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/iszsig/eve-gate-watch/internal/dscan"
+	"github.com/istvzsig/eve-gate-watch/internal/dscan"
 )
 
 // POST /universe/ids/

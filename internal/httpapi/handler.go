@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/iszsig/eve-gate-watch/internal/intel"
+	"github.com/istvzsig/eve-gate-watch/internal/intel"
 )
 
 type Handler struct {

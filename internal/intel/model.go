@@ -35,3 +35,8 @@ type Observation struct {
 	Source     ObservationSource
 	ObservedAt time.Time
 }
+
+type IntelReport struct {
+	System       string        `json:"system"`
+	Observations []Observation `json:"observations"`
+}

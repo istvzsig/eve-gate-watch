@@ -4,10 +4,14 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 
+	"github.com/iszsig/eve-gate-watch/internal/discord"
 	"github.com/iszsig/eve-gate-watch/internal/dscan"
 	"github.com/iszsig/eve-gate-watch/internal/httpapi"
 	"github.com/iszsig/eve-gate-watch/internal/intel"
+	"github.com/iszsig/eve-gate-watch/internal/ship"
 )
 
 func main() {
@@ -18,7 +22,11 @@ func main() {
 
 	repository := intel.NewMemoryRepository()
 
-	var dScanner dscan.Scanner
+	dScanner := dscan.NewFakeDScan([]ship.Ship{
+		{
+			Name: "Rifter",
+		},
+	})
 
 	intelService := intel.NewService(repository, dScanner)
 
@@ -37,36 +45,30 @@ func main() {
 		}
 	}()
 
-	for {
-		select {}
+	// // Discord bot session
+	botSession, err := discord.CreateSession(token)
+	if err != nil {
+		log.Fatalf("create Discord session: %v", err)
+		return
 	}
 
-	// // Discord bot session
-	// botSession, err := discord.CreateSession(token)
-	// if err != nil {
-	// 	log.Fatalf("create Discord session: %v", err)
-	// 	return
-	// }
+	discord.RegisterHandlers(botSession, intelService)
 
-	// discord.RegisterHandlers(botSession, intelService)
+	if err := discord.OpenSession(botSession); err != nil {
+		log.Fatalf("open Discord session: %v", err)
+		return
+	}
 
-	// if err := discord.OpenSession(botSession); err != nil {
-	// 	log.Fatalf("open Discord session: %v", err)
-	// 	return
-	// }
+	log.Println("Gatewatch bot is online")
 
-	// log.Println("Gatewatch bot is online")
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
-	// stop := make(chan os.Signal, 1)
-	// signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	<-stop
 
-	// <-stop
+	log.Println("shutting down discord session")
 
-	// log.Println("shutting down discord session")
-
-	// if err := discord.CloseSession(botSession); err != nil {
-	// 	log.Printf("close Discord session: %v", err)
-
-	// }
-
+	if err := discord.CloseSession(botSession); err != nil {
+		log.Printf("close Discord session: %v", err)
+	}
 }

@@ -2,6 +2,7 @@ package intel
 
 import (
 	"context"
+	"strings"
 	"sync"
 )
 
@@ -41,12 +42,17 @@ func (r *MemoryRepository) RecentBySystem(
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	var result []Observation
+	systemName = strings.TrimSpace(systemName)
+
+	result := make([]Observation, 0, limit)
 
 	for i := len(r.observations) - 1; i >= 0 && len(result) < limit; i-- {
 		observation := r.observations[i]
 
-		if observation.SystemName != systemName {
+		if !strings.EqualFold(
+			strings.TrimSpace(observation.SystemName),
+			systemName,
+		) {
 			continue
 		}
 

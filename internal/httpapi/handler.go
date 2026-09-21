@@ -35,8 +35,6 @@ func (h *Handler) HandleDScan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("HTTP intel service: %p", h.intelService)
-
 	record := &DScanRecord{}
 
 	if err := json.NewDecoder(r.Body).Decode(record); err != nil {
@@ -55,7 +53,7 @@ func (h *Handler) HandleDScan(w http.ResponseWriter, r *http.Request) {
 
 	input := dscan.DScanInput{
 		SystemName: record.SystemName,
-		Ships:      record.Ships,
+		Ships:      ships,
 	}
 
 	if err := h.intelService.RecordDscan(
@@ -75,4 +73,20 @@ func (h *Handler) HandleDScan(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) HandleIntel(w http.ResponseWriter, r *http.Request) {
+	systemName := r.URL.Query().Get("system")
+
+	report, err := h.intelService.RecentIntel(
+		r.Context(),
+		systemName,
+	)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	if err := json.NewEncoder(w).Encode(report); err != nil {
+		log.Printf("encode intel response: %v", err)
+	}
 }

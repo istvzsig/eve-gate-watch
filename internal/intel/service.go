@@ -3,6 +3,7 @@ package intel
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -24,11 +25,11 @@ func NewService(repository Repository, dScanner dscan.Scanner) *Service {
 func (s *Service) RecentIntel(
 	ctx context.Context,
 	systemName string,
-) (string, error) {
+) (IntelReport, error) {
 	systemName = strings.TrimSpace(systemName)
 
 	if systemName == "" {
-		return "", fmt.Errorf("system name is required")
+		return IntelReport{}, fmt.Errorf("system name is required")
 	}
 
 	observations, err := s.repository.RecentBySystem(
@@ -37,46 +38,19 @@ func (s *Service) RecentIntel(
 		10,
 	)
 	if err != nil {
-		return "", err
+		return IntelReport{}, err
 	}
 
-	if len(observations) == 0 {
-		return fmt.Sprintf(
-			"🚨 %s INTEL\n\nNo recent observations.",
-			strings.ToUpper(systemName),
-		), nil
-	}
-
-	var builder strings.Builder
-
-	fmt.Fprintf(
-		&builder,
-		"🚨 %s INTEL\n\n",
-		strings.ToUpper(systemName),
-	)
-
-	for _, observation := range observations {
-		fmt.Fprintf(
-			&builder,
-			"🧑‍🚀 %s — %s — %s\n",
-			observation.Pilot,
-			observation.ShipName,
-			observation.Threat,
-		)
-	}
-
-	return builder.String(), nil
+	return IntelReport{
+		System:       systemName,
+		Observations: observations,
+	}, nil
 }
 
 func (s *Service) RecordDscan(
 	ctx context.Context,
 	input dscan.DScanInput,
 ) error {
-	// Local
-	// Killmails
-	// Manual reports
-	// ESI/public sources
-
 	systemName := strings.TrimSpace(input.SystemName)
 
 	if systemName == "" {
@@ -88,13 +62,20 @@ func (s *Service) RecordDscan(
 			Pilot:      Pilot{Name: "Unknown Pilot"},
 			ShipName:   ship.Name,
 			SystemName: systemName,
-			Source:     "dscan",
+			Source:     SourceDScan,
 			Threat:     ThreatUnknown,
 			ObservedAt: time.Now(),
 		}
+
 		if err := s.repository.CreateObservation(ctx, observation); err != nil {
 			return err
 		}
+
+		log.Printf(
+			"stored intel: system=%s ship=%s",
+			systemName,
+			ship.Name,
+		)
 	}
 
 	return nil

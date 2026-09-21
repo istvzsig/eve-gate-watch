@@ -104,7 +104,7 @@ func dispatchIntelCommand(
 		strings.TrimPrefix(message.Content, IntelCommand),
 	)
 
-	result, err := intelService.RecentIntel(
+	recentIntel, err := intelService.RecentIntel(
 		context.Background(),
 		systemName,
 	)
@@ -113,6 +113,8 @@ func dispatchIntelCommand(
 		return
 	}
 
+	result := formatIntel(recentIntel)
+
 	_, err = session.ChannelMessageSend(
 		message.ChannelID,
 		result,
@@ -120,7 +122,6 @@ func dispatchIntelCommand(
 	if err != nil {
 		log.Printf("send intel message: %v", err)
 	}
-
 }
 
 func dispatchDscanCommand(
@@ -164,4 +165,30 @@ func dispatchDscanCommand(
 	if err != nil {
 		log.Printf("send dscan result: %v", err)
 	}
+}
+
+func formatIntel(report intel.IntelReport) string {
+	var builder strings.Builder
+
+	fmt.Fprintf(
+		&builder,
+		"🛰️ %s INTEL\n\n",
+		strings.ToUpper(report.System),
+	)
+
+	if len(report.Observations) == 0 {
+		builder.WriteString("No recent intel.")
+		return builder.String()
+	}
+
+	for _, observation := range report.Observations {
+		fmt.Fprintf(
+			&builder,
+			"🚀 %s — %s\n",
+			strings.ToUpper(observation.ShipName),
+			observation.Threat,
+		)
+	}
+
+	return builder.String()
 }

@@ -7,8 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/iszsig/eve-gate-watch/external/esi"
 	"github.com/iszsig/eve-gate-watch/internal/discord"
-	"github.com/iszsig/eve-gate-watch/internal/dscan"
 	"github.com/iszsig/eve-gate-watch/internal/httpapi"
 	"github.com/iszsig/eve-gate-watch/internal/intel"
 )
@@ -21,7 +21,7 @@ func main() {
 
 	const esiBaseURL = "https://esi.evetech.net/latest"
 
-	dScanner := dscan.NewESIScanner(esiBaseURL)
+	dScanner := esi.NewESIScanner(esiBaseURL)
 	intelService := intel.NewService(dScanner)
 
 	// Http api

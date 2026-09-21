@@ -1,4 +1,4 @@
-package dscan
+package esi
 
 import (
 	"encoding/json"
@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/iszsig/eve-gate-watch/internal/dscan"
 )
 
 // POST /universe/ids/
@@ -28,7 +30,7 @@ func NewESIScanner(url string) *ESIScanner {
 	}
 }
 
-var _ Scanner = (*ESIScanner)(nil)
+var _ dscan.Scanner = (*ESIScanner)(nil)
 
 type resolveResponse struct {
 	Systems []struct {
@@ -67,44 +69,44 @@ type systemKillsResponse struct {
 	NPCKills  int   `json:"npc_kills"`
 }
 
-func (s *ESIScanner) DScan(systemName string) (DScanResult, error) {
+func (s *ESIScanner) DScan(systemName string) (dscan.DScanResult, error) {
 	systemName = strings.TrimSpace(systemName)
 
 	if systemName == "" {
-		return DScanResult{}, fmt.Errorf("system name is required")
+		return dscan.DScanResult{}, fmt.Errorf("system name is required")
 	}
 
 	systemID, resolvedName, err := s.resolveSystem(systemName)
 	if err != nil {
-		return DScanResult{}, err
+		return dscan.DScanResult{}, err
 	}
 
 	system, err := s.getSystem(systemID)
 	if err != nil {
-		return DScanResult{}, err
+		return dscan.DScanResult{}, err
 	}
 
 	constellation, err := s.getConstellation(system.ConstellationID)
 	if err != nil {
-		return DScanResult{}, err
+		return dscan.DScanResult{}, err
 	}
 
 	region, err := s.getRegion(constellation.RegionID)
 	if err != nil {
-		return DScanResult{}, err
+		return dscan.DScanResult{}, err
 	}
 
 	jumps, err := s.getSystemJumps(systemID)
 	if err != nil {
-		return DScanResult{}, err
+		return dscan.DScanResult{}, err
 	}
 
 	kills, err := s.getSystemKills(systemID)
 	if err != nil {
-		return DScanResult{}, err
+		return dscan.DScanResult{}, err
 	}
 
-	return DScanResult{
+	return dscan.DScanResult{
 		SystemName:        resolvedName,
 		RegionName:        region.Name,
 		ConstellationName: constellation.Name,

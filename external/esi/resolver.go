@@ -6,17 +6,6 @@ import (
 	"strings"
 )
 
-type resolveResponse struct {
-	Systems []struct {
-		ID   int64  `json:"id"`
-		Name string `json:"name"`
-	} `json:"systems"`
-}
-
-type typeResponse struct {
-	Name string `json:"name"`
-}
-
 func (c *ESIClient) ResolveSystem(
 	systemName string,
 ) (int64, string, error) {

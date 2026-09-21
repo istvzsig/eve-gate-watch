@@ -7,26 +7,27 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/istvzsig/eve-gate-watch/internal/pvp"
 )
 
 type Client struct {
 	baseURL        string
 	httpClient     *http.Client
-	systemResolver pvp.SystemResolver
+	systemResolver SystemResolver
+	typeResolver   TypeResolver
 }
 
 func NewClient(
 	baseURL string,
-	systemResolver pvp.SystemResolver,
+	systemResolver SystemResolver,
+	typeResolver TypeResolver,
 ) *Client {
 	return &Client{
-		baseURL:        baseURL,
-		systemResolver: systemResolver,
+		baseURL: baseURL,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
+		systemResolver: systemResolver,
+		typeResolver:   typeResolver,
 	}
 }
 

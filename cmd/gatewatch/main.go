@@ -13,16 +13,12 @@ import (
 	"github.com/istvzsig/eve-gate-watch/internal/dscan"
 	"github.com/istvzsig/eve-gate-watch/internal/httpapi"
 	"github.com/istvzsig/eve-gate-watch/internal/intel"
-	"github.com/istvzsig/eve-gate-watch/internal/pvp"
 )
 
 const (
-	esiBaseURL        = "https://esi.evetech.net/latest"
-	zkillboardBaseURL = "https://zkillboard.com/api"
+	esiBaseURL = "https://esi.evetech.net/latest"
+	zkillURL   = "https://zkillboard.com/api"
 )
-
-var _ dscan.Scanner = (*esi.ESIClient)(nil)
-var _ pvp.SystemResolver = (*esi.ESIClient)(nil)
 
 func main() {
 	token := os.Getenv("DISCORD_BOT_TOKEN")
@@ -32,10 +28,11 @@ func main() {
 
 	esiClient := esi.NewESIClient(esiBaseURL)
 
-	zkillClient := zkill.NewClient(
-		zkillboardBaseURL,
-		esiClient,
-	)
+	var _ dscan.Scanner = (*esi.ESIClient)(nil)
+	var _ zkill.SystemResolver = (*esi.ESIClient)(nil)
+	var _ zkill.TypeResolver = (*esi.ESIClient)(nil)
+
+	zkillClient := zkill.NewClient(zkillURL, esiClient, esiClient)
 
 	intelService := intel.NewService(esiClient, zkillClient)
 

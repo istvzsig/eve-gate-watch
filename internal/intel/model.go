@@ -1,6 +1,8 @@
 package intel
 
-import "time"
+import (
+	"time"
+)
 
 type Threat string
 
@@ -11,12 +13,25 @@ const (
 	ThreatHostile  Threat = "hostile"
 )
 
+type Pilot struct {
+	Name string
+}
+
+type ObservationSource string
+
+const (
+	SourceDScan    ObservationSource = "dscan"
+	SourceKillmail ObservationSource = "killmail"
+	SourceManual   ObservationSource = "manual"
+	SourceESI      ObservationSource = "esi"
+)
+
 type Observation struct {
 	ID         string
-	PilotName  string
+	Pilot      Pilot
 	SystemName string
 	ShipName   string
 	Threat     Threat
-	Source     string
+	Source     ObservationSource
 	ObservedAt time.Time
 }

@@ -1,15 +1,12 @@
 package main
 
 import (
-	"context"
 	"log"
+	"net/http"
 	"os"
-	"os/signal"
-	"strings"
-	"syscall"
 
-	"github.com/bwmarrin/discordgo"
-
+	"github.com/iszsig/eve-gate-watch/internal/dscan"
+	"github.com/iszsig/eve-gate-watch/internal/httpapi"
 	"github.com/iszsig/eve-gate-watch/internal/intel"
 )
 
@@ -20,83 +17,56 @@ func main() {
 	}
 
 	repository := intel.NewMemoryRepository()
-	intelService := intel.NewService(repository)
 
-	session, err := discordgo.New("Bot " + token)
-	if err != nil {
-		log.Fatalf("create Discord session: %v", err)
-	}
+	var dScanner dscan.Scanner
 
-	session.AddHandler(func(
-		session *discordgo.Session,
-		message *discordgo.MessageCreate,
-	) {
-		handleMessage(session, message, intelService)
-	})
+	intelService := intel.NewService(repository, dScanner)
 
-	if err := session.Open(); err != nil {
-		log.Fatalf("open Discord session: %v", err)
-	}
+	// Http api
+	go func() {
+		mux := http.NewServeMux()
+		handler := httpapi.NewHandler(intelService)
 
-	log.Println("Gatewatch is online")
+		mux.HandleFunc("/api/dscan", handler.HandleDScan)
+		mux.HandleFunc("/api/intel", handler.HandleIntel)
 
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+		log.Println("HTTP server listening on :8080")
 
-	<-stop
-
-	log.Println("shutting down")
-
-	if err := session.Close(); err != nil {
-		log.Printf("close Discord session: %v", err)
-	}
-}
-
-func handleMessage(
-	session *discordgo.Session,
-	message *discordgo.MessageCreate,
-	intelService *intel.Service,
-) {
-	if message.Author.Bot {
-		return
-	}
-
-	content := strings.TrimSpace(message.Content)
-
-	if content == "!ping" {
-		_, err := session.ChannelMessageSend(
-			message.ChannelID,
-			"Pong! Gatewatch online.",
-		)
-		if err != nil {
-			log.Printf("send message: %v", err)
+		if err := http.ListenAndServe(":8080", mux); err != nil {
+			log.Fatalf("HTTP server failed: %v", err)
 		}
+	}()
 
-		return
+	for {
+		select {}
 	}
 
-	if strings.HasPrefix(content, "!intel") {
-		systemName := strings.TrimSpace(
-			strings.TrimPrefix(content, "!intel"),
-		)
+	// // Discord bot session
+	// botSession, err := discord.CreateSession(token)
+	// if err != nil {
+	// 	log.Fatalf("create Discord session: %v", err)
+	// 	return
+	// }
 
-		result, err := intelService.RecentIntel(
-			context.Background(),
-			systemName,
-		)
-		if err != nil {
-			log.Printf("intel query: %v", err)
-			return
-		}
+	// discord.RegisterHandlers(botSession, intelService)
 
-		_, err = session.ChannelMessageSend(
-			message.ChannelID,
-			result,
-		)
-		if err != nil {
-			log.Printf("send intel message: %v", err)
-		}
+	// if err := discord.OpenSession(botSession); err != nil {
+	// 	log.Fatalf("open Discord session: %v", err)
+	// 	return
+	// }
 
-		return
-	}
+	// log.Println("Gatewatch bot is online")
+
+	// stop := make(chan os.Signal, 1)
+	// signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+
+	// <-stop
+
+	// log.Println("shutting down discord session")
+
+	// if err := discord.CloseSession(botSession); err != nil {
+	// 	log.Printf("close Discord session: %v", err)
+
+	// }
+
 }

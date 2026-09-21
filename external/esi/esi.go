@@ -1,6 +1,7 @@
 package esi
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,19 +12,14 @@ import (
 	"github.com/istvzsig/eve-gate-watch/internal/dscan"
 )
 
-// POST /universe/ids/
-// GET  /universe/systems/{system_id}/
-// GET  /universe/system_jumps/
-// GET  /universe/system_kills/
-
 type ESIScanner struct {
 	baseURL    string
 	httpClient *http.Client
 }
 
-func NewESIScanner(url string) *ESIScanner {
+func NewESIScanner(baseURL string) *ESIScanner {
 	return &ESIScanner{
-		baseURL: url,
+		baseURL: baseURL,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
@@ -37,6 +33,10 @@ type resolveResponse struct {
 		ID   int64  `json:"id"`
 		Name string `json:"name"`
 	} `json:"systems"`
+}
+
+type typeResponse struct {
+	Name string `json:"name"`
 }
 
 type systemResponse struct {
@@ -70,13 +70,7 @@ type systemKillsResponse struct {
 }
 
 func (s *ESIScanner) DScan(systemName string) (dscan.DScanResult, error) {
-	systemName = strings.TrimSpace(systemName)
-
-	if systemName == "" {
-		return dscan.DScanResult{}, fmt.Errorf("system name is required")
-	}
-
-	systemID, resolvedName, err := s.resolveSystem(systemName)
+	systemID, resolvedName, err := s.ResolveSystem(systemName)
 	if err != nil {
 		return dscan.DScanResult{}, err
 	}
@@ -121,9 +115,15 @@ func (s *ESIScanner) DScan(systemName string) (dscan.DScanResult, error) {
 	}, nil
 }
 
-func (s *ESIScanner) resolveSystem(
+func (s *ESIScanner) ResolveSystem(
 	systemName string,
 ) (int64, string, error) {
+	systemName = strings.TrimSpace(systemName)
+
+	if systemName == "" {
+		return 0, "", fmt.Errorf("system name is required")
+	}
+
 	body, err := json.Marshal([]string{systemName})
 	if err != nil {
 		return 0, "", err
@@ -140,10 +140,36 @@ func (s *ESIScanner) resolveSystem(
 	}
 
 	if len(response.Systems) == 0 {
-		return 0, "", fmt.Errorf("solar system %q not found", systemName)
+		return 0, "", fmt.Errorf(
+			"solar system %q not found",
+			systemName,
+		)
 	}
 
-	return response.Systems[0].ID, response.Systems[0].Name, nil
+	system := response.Systems[0]
+
+	return system.ID, system.Name, nil
+}
+
+func (s *ESIScanner) ResolveType(typeID int64) (string, error) {
+	if typeID <= 0 {
+		return "", fmt.Errorf("type id is required")
+	}
+
+	var response typeResponse
+
+	if err := s.getJSON(
+		fmt.Sprintf("/universe/types/%d/", typeID),
+		&response,
+	); err != nil {
+		return "", err
+	}
+
+	if response.Name == "" {
+		return "", fmt.Errorf("type %d has no name", typeID)
+	}
+
+	return response.Name, nil
 }
 
 func (s *ESIScanner) getSystem(
@@ -153,6 +179,32 @@ func (s *ESIScanner) getSystem(
 
 	err := s.getJSON(
 		fmt.Sprintf("/universe/systems/%d/", systemID),
+		&response,
+	)
+
+	return response, err
+}
+
+func (s *ESIScanner) getConstellation(
+	constellationID int64,
+) (constellationResponse, error) {
+	var response constellationResponse
+
+	err := s.getJSON(
+		fmt.Sprintf("/universe/constellations/%d/", constellationID),
+		&response,
+	)
+
+	return response, err
+}
+
+func (s *ESIScanner) getRegion(
+	regionID int64,
+) (regionResponse, error) {
+	var response regionResponse
+
+	err := s.getJSON(
+		fmt.Sprintf("/universe/regions/%d/", regionID),
 		&response,
 	)
 
@@ -209,32 +261,6 @@ func (s *ESIScanner) getSystemKills(
 	}, nil
 }
 
-func (s *ESIScanner) getConstellation(
-	constellationID int64,
-) (constellationResponse, error) {
-	var response constellationResponse
-
-	err := s.getJSON(
-		fmt.Sprintf("/universe/constellations/%d/", constellationID),
-		&response,
-	)
-
-	return response, err
-}
-
-func (s *ESIScanner) getRegion(
-	regionID int64,
-) (regionResponse, error) {
-	var response regionResponse
-
-	err := s.getJSON(
-		fmt.Sprintf("/universe/regions/%d/", regionID),
-		&response,
-	)
-
-	return response, err
-}
-
 func (s *ESIScanner) getJSON(
 	path string,
 	target any,
@@ -259,7 +285,7 @@ func (s *ESIScanner) postJSON(
 	req, err := http.NewRequest(
 		http.MethodPost,
 		s.baseURL+path,
-		strings.NewReader(string(body)),
+		bytes.NewReader(body),
 	)
 	if err != nil {
 		return err
@@ -274,7 +300,10 @@ func (s *ESIScanner) doJSON(
 	req *http.Request,
 	target any,
 ) error {
-	req.Header.Set("User-Agent", "eve-gate-watch/0.1")
+	req.Header.Set(
+		"User-Agent",
+		"eve-gate-watch/0.1",
+	)
 
 	response, err := s.httpClient.Do(req)
 	if err != nil {
@@ -283,7 +312,9 @@ func (s *ESIScanner) doJSON(
 	defer response.Body.Close()
 
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		body, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
+		body, _ := io.ReadAll(
+			io.LimitReader(response.Body, 4096),
+		)
 
 		return fmt.Errorf(
 			"ESI returned %s: %s",
@@ -293,7 +324,10 @@ func (s *ESIScanner) doJSON(
 	}
 
 	if err := json.NewDecoder(response.Body).Decode(target); err != nil {
-		return fmt.Errorf("decode ESI response: %w", err)
+		return fmt.Errorf(
+			"decode ESI response: %w",
+			err,
+		)
 	}
 
 	return nil

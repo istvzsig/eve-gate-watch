@@ -14,14 +14,14 @@ import (
 // GET  /universe/system_jumps/
 // GET  /universe/system_kills/
 
-const esiBaseURL = "https://esi.evetech.net/latest"
-
 type ESIScanner struct {
+	baseURL    string
 	httpClient *http.Client
 }
 
-func NewESIScanner() *ESIScanner {
+func NewESIScanner(url string) *ESIScanner {
 	return &ESIScanner{
+		baseURL: url,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
@@ -239,7 +239,7 @@ func (s *ESIScanner) getJSON(
 ) error {
 	req, err := http.NewRequest(
 		http.MethodGet,
-		esiBaseURL+path,
+		s.baseURL+path,
 		nil,
 	)
 	if err != nil {
@@ -256,7 +256,7 @@ func (s *ESIScanner) postJSON(
 ) error {
 	req, err := http.NewRequest(
 		http.MethodPost,
-		esiBaseURL+path,
+		s.baseURL+path,
 		strings.NewReader(string(body)),
 	)
 	if err != nil {

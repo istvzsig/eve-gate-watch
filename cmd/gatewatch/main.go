@@ -19,7 +19,9 @@ func main() {
 		log.Fatal("DISCORD_BOT_TOKEN is required")
 	}
 
-	dScanner := dscan.NewESIScanner()
+	const esiBaseURL = "https://esi.evetech.net/latest"
+
+	dScanner := dscan.NewESIScanner(esiBaseURL)
 	intelService := intel.NewService(dScanner)
 
 	// Http api

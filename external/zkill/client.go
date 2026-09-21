@@ -5,44 +5,40 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
+
+	"github.com/istvzsig/eve-gate-watch/internal/pvp"
 )
 
 type Client struct {
-	baseURL    string
-	httpClient *http.Client
+	baseURL        string
+	httpClient     *http.Client
+	systemResolver pvp.SystemResolver
 }
 
-func NewClient(baseURL string) *Client {
+func NewClient(
+	baseURL string,
+	systemResolver pvp.SystemResolver,
+) *Client {
 	return &Client{
-		baseURL: baseURL,
+		baseURL:        baseURL,
+		systemResolver: systemResolver,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
 	}
 }
 
-type Killmail struct {
-	KillmailID   int64     `json:"killmail_id"`
-	KillmailTime time.Time `json:"killmail_time"`
-	Victim       Victim    `json:"victim"`
-	ZKB          ZKB       `json:"zkb"`
-}
-
-type Victim struct {
-	ShipTypeID int64 `json:"ship_type_id"`
-}
-
-type ZKB struct {
-	TotalValue float64 `json:"totalValue"`
-	NPC        bool    `json:"npc"`
-	Solo       bool    `json:"solo"`
-}
-
 func (c *Client) RecentPVP(
-	systemID int64,
+	systemName string,
 	pastSeconds int,
 ) ([]Killmail, error) {
+	systemID, _, err := c.systemResolver.ResolveSystem(systemName)
+	if err != nil {
+		return nil, err
+	}
+
 	url := fmt.Sprintf(
 		"%s/kills/solarSystemID/%d/pastSeconds/%d/",
 		c.baseURL,
@@ -80,11 +76,27 @@ func (c *Client) RecentPVP(
 		)
 	}
 
-	var killmails []Killmail
-
-	if err := json.NewDecoder(response.Body).Decode(&killmails); err != nil {
-		return nil, fmt.Errorf("decode zKillboard response: %w", err)
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read zKillboard response: %w", err)
 	}
 
-	return killmails, nil
+	var killmails []Killmail
+
+	if err := json.Unmarshal(body, &killmails); err == nil {
+		return killmails, nil
+	}
+
+	var apiError struct {
+		Error string `json:"error"`
+	}
+
+	if err := json.Unmarshal(body, &apiError); err == nil && apiError.Error != "" {
+		return nil, fmt.Errorf("zKillboard API error: %s", apiError.Error)
+	}
+
+	return nil, fmt.Errorf(
+		"decode zKillboard response: %s",
+		strings.TrimSpace(string(body)),
+	)
 }

@@ -10,8 +10,10 @@ import (
 	"github.com/istvzsig/eve-gate-watch/external/esi"
 	"github.com/istvzsig/eve-gate-watch/external/zkill"
 	"github.com/istvzsig/eve-gate-watch/internal/discord"
+	"github.com/istvzsig/eve-gate-watch/internal/dscan"
 	"github.com/istvzsig/eve-gate-watch/internal/httpapi"
 	"github.com/istvzsig/eve-gate-watch/internal/intel"
+	"github.com/istvzsig/eve-gate-watch/internal/pvp"
 )
 
 const (
@@ -19,16 +21,23 @@ const (
 	zkillboardBaseURL = "https://zkillboard.com/api"
 )
 
+var _ dscan.Scanner = (*esi.ESIClient)(nil)
+var _ pvp.SystemResolver = (*esi.ESIClient)(nil)
+
 func main() {
 	token := os.Getenv("DISCORD_BOT_TOKEN")
 	if token == "" {
 		log.Fatal("DISCORD_BOT_TOKEN is required")
 	}
 
-	dScanner := esi.NewESIScanner(esiBaseURL)
-	zkillClient := zkill.NewClient(zkillboardBaseURL)
+	esiClient := esi.NewESIClient(esiBaseURL)
 
-	intelService := intel.NewService(dScanner, zkillClient)
+	zkillClient := zkill.NewClient(
+		zkillboardBaseURL,
+		esiClient,
+	)
+
+	intelService := intel.NewService(esiClient, zkillClient)
 
 	// Http api
 	go func() {

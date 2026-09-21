@@ -38,12 +38,7 @@ func (s *Service) RecentPVP(systemName string) (pvp.Result, error) {
 		return pvp.Result{}, fmt.Errorf("system name is required")
 	}
 
-	systemID, _, err := s.dScanner.ResolveSystem(systemName)
-	if err != nil {
-		return pvp.Result{}, err
-	}
-
-	killmails, err := s.zkillClient.RecentPVP(systemID, 3600)
+	killmails, err := s.zkillClient.RecentPVP(systemName, 3600)
 	if err != nil {
 		return pvp.Result{}, err
 	}
@@ -51,12 +46,10 @@ func (s *Service) RecentPVP(systemName string) (pvp.Result, error) {
 	kills := make([]pvp.Kill, 0, len(killmails))
 
 	for _, killmail := range killmails {
-		shipName, _ := s.dScanner.ResolveType(killmail.Victim.ShipTypeID)
-
 		kills = append(kills, pvp.Kill{
 			ID:         killmail.KillmailID,
 			OccurredAt: killmail.KillmailTime,
-			ShipName:   shipName,
+			ShipName:   fmt.Sprint(killmail.Victim.ShipTypeID),
 			Value:      killmail.ZKB.TotalValue,
 			Solo:       killmail.ZKB.Solo,
 		})

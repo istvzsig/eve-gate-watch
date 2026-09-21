@@ -56,12 +56,15 @@ func FormatDScan(result dscan.DScanResult) string {
 }
 
 func FormatPVP(result pvp.Result) string {
+	const maxKills = 10
+
 	var builder strings.Builder
+
+	builder.WriteString("```text\n")
 
 	fmt.Fprintf(
 		&builder,
-		"```text\n"+
-			"%s PVP ACTIVITY\n"+
+		"%s PVP ACTIVITY\n"+
 			"--------------------------------\n"+
 			"%-12s %-18s %-12s %s\n"+
 			"--------------------------------\n",
@@ -74,17 +77,33 @@ func FormatPVP(result pvp.Result) string {
 
 	if len(result.Kills) == 0 {
 		builder.WriteString("No recent PvP activity.\n")
-	} else {
-		for _, kill := range result.Kills {
-			fmt.Fprintf(
-				&builder,
-				"%-12d %-18s %-12s %s\n",
-				kill.ID,
-				kill.ShipName,
-				FormatISK(kill.Value),
-				kill.OccurredAt.Local().Format("15:04"),
-			)
-		}
+		builder.WriteString("```")
+		return builder.String()
+	}
+
+	kills := result.Kills
+
+	if len(kills) > maxKills {
+		kills = kills[:maxKills]
+	}
+
+	for _, kill := range kills {
+		fmt.Fprintf(
+			&builder,
+			"%-12d %-18s %-12s %s\n",
+			kill.ID,
+			kill.ShipName,
+			FormatISK(kill.Value),
+			kill.OccurredAt.Local().Format("15:04"),
+		)
+	}
+
+	if len(result.Kills) > maxKills {
+		fmt.Fprintf(
+			&builder,
+			"... and %d more\n",
+			len(result.Kills)-maxKills,
+		)
 	}
 
 	builder.WriteString("```")

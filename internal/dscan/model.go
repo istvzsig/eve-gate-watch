@@ -1,13 +1,13 @@
 package dscan
 
-import "github.com/iszsig/eve-gate-watch/internal/ship"
-
-type DScanInput struct {
-	SystemName string
-	Ships      []ship.Ship
-}
-
 type DScanResult struct {
-	SystemName string
-	Ships      []ship.Ship
+	SystemName     string  `json:"system"`
+	SecurityStatus float64 `json:"security_status"`
+	Planets        int     `json:"planets"`
+	Stargates      int     `json:"stargates"`
+	Stations       int     `json:"stations"`
+	ShipJumps      int     `json:"ship_jumps"`
+	ShipKills      int     `json:"ship_kills"`
+	PodKills       int     `json:"pod_kills"`
+	NPCKills       int     `json:"npc_kills"`
 }

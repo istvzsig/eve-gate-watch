@@ -1,12 +1,12 @@
 package discord
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/iszsig/eve-gate-watch/internal/dscan"
 	"github.com/iszsig/eve-gate-watch/internal/intel"
 )
 
@@ -71,11 +71,11 @@ func dispatchCommands(
 	}
 
 	// intel
-	if msgContent == IntelCommand || strings.HasPrefix(msgContent, IntelCommand+" ") {
-		dispatchIntelCommand(session, message, intelService)
-		return
+	// if msgContent == IntelCommand || strings.HasPrefix(msgContent, IntelCommand+" ") {
+	// 	dispatchIntelCommand(session, message, intelService)
+	// 	return
 
-	}
+	// }
 
 	// dscan
 	if msgContent == DScanCommand || strings.HasPrefix(msgContent, DScanCommand+" ") {
@@ -95,35 +95,6 @@ func dispatchPingCommand(session *discordgo.Session, message *discordgo.MessageC
 	}
 }
 
-func dispatchIntelCommand(
-	session *discordgo.Session,
-	message *discordgo.MessageCreate,
-	intelService *intel.Service,
-) {
-	systemName := strings.TrimSpace(
-		strings.TrimPrefix(message.Content, IntelCommand),
-	)
-
-	recentIntel, err := intelService.RecentIntel(
-		context.Background(),
-		systemName,
-	)
-	if err != nil {
-		log.Printf("intel query: %v", err)
-		return
-	}
-
-	result := formatIntel(recentIntel)
-
-	_, err = session.ChannelMessageSend(
-		message.ChannelID,
-		result,
-	)
-	if err != nil {
-		log.Printf("send intel message: %v", err)
-	}
-}
-
 func dispatchDscanCommand(
 	session *discordgo.Session,
 	message *discordgo.MessageCreate,
@@ -133,62 +104,110 @@ func dispatchDscanCommand(
 		strings.TrimPrefix(message.Content, DScanCommand),
 	)
 
-	result, err := intelService.DScan(
-		context.Background(),
-		systemName,
-	)
+	result, err := intelService.DScan(systemName)
 	if err != nil {
 		log.Printf("dscan: %v", err)
 		return
 	}
 
-	var builder strings.Builder
-
-	fmt.Fprintf(
-		&builder,
-		"🚨 %s DSCAN\n\n",
-		strings.ToUpper(result.SystemName),
-	)
-
-	for _, ship := range result.Ships {
-		fmt.Fprintf(
-			&builder,
-			"🚀 %s ship\n",
-			strings.ToUpper(ship.Name),
-		)
-	}
+	messageText := formatDScan(result)
 
 	_, err = session.ChannelMessageSend(
 		message.ChannelID,
-		builder.String(),
+		messageText,
 	)
 	if err != nil {
 		log.Printf("send dscan result: %v", err)
 	}
 }
 
-func formatIntel(report intel.IntelReport) string {
+func formatDScan(result dscan.DScanResult) string {
 	var builder strings.Builder
 
 	fmt.Fprintf(
 		&builder,
 		"🛰️ %s INTEL\n\n",
-		strings.ToUpper(report.System),
+		strings.ToUpper(result.SystemName),
 	)
 
-	if len(report.Observations) == 0 {
-		builder.WriteString("No recent intel.")
-		return builder.String()
-	}
+	fmt.Fprintf(
+		&builder,
+		"🛡️ Security: %.2f\n",
+		result.SecurityStatus,
+	)
 
-	for _, observation := range report.Observations {
-		fmt.Fprintf(
-			&builder,
-			"🚀 %s — %s\n",
-			strings.ToUpper(observation.ShipName),
-			observation.Threat,
-		)
-	}
+	fmt.Fprintf(
+		&builder,
+		"🪐 Planets: %d\n",
+		result.Planets,
+	)
+
+	fmt.Fprintf(
+		&builder,
+		"🚪 Stargates: %d\n",
+		result.Stargates,
+	)
+
+	fmt.Fprintf(
+		&builder,
+		"🏭 Stations: %d\n\n",
+		result.Stations,
+	)
+
+	builder.WriteString("📊 LAST HOUR\n")
+
+	fmt.Fprintf(
+		&builder,
+		"🚀 Ship jumps: %d\n",
+		result.ShipJumps,
+	)
+
+	fmt.Fprintf(
+		&builder,
+		"💀 Ship kills: %d\n",
+		result.ShipKills,
+	)
+
+	fmt.Fprintf(
+		&builder,
+		"☠️ Pod kills: %d\n",
+		result.PodKills,
+	)
+
+	fmt.Fprintf(
+		&builder,
+		"🤖 NPC kills: %d",
+		result.NPCKills,
+	)
 
 	return builder.String()
 }
+
+// func dispatchIntelCommand(
+// 	session *discordgo.Session,
+// 	message *discordgo.MessageCreate,
+// 	intelService *intel.Service,
+// ) {
+// 	systemName := strings.TrimSpace(
+// 		strings.TrimPrefix(message.Content, IntelCommand),
+// 	)
+
+// 	recentIntel, err := intelService.RecentIntel(
+// 		context.Background(),
+// 		systemName,
+// 	)
+// 	if err != nil {
+// 		log.Printf("intel query: %v", err)
+// 		return
+// 	}
+
+// 	result := formatIntel(recentIntel)
+
+// 	_, err = session.ChannelMessageSend(
+// 		message.ChannelID,
+// 		result,
+// 	)
+// 	if err != nil {
+// 		log.Printf("send intel message: %v", err)
+// 	}
+// }

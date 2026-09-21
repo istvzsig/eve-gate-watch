@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/iszsig/eve-gate-watch/internal/discord"
+	"github.com/iszsig/eve-gate-watch/internal/dscan"
 	"github.com/iszsig/eve-gate-watch/internal/httpapi"
 	"github.com/iszsig/eve-gate-watch/internal/intel"
 )
@@ -18,9 +19,8 @@ func main() {
 		log.Fatal("DISCORD_BOT_TOKEN is required")
 	}
 
-	repository := intel.NewMemoryRepository()
-
-	intelService := intel.NewService(repository, nil)
+	dScanner := dscan.NewESIScanner()
+	intelService := intel.NewService(dScanner)
 
 	// Http api
 	go func() {
@@ -28,7 +28,6 @@ func main() {
 		handler := httpapi.NewHandler(intelService)
 
 		mux.HandleFunc("/api/dscan", handler.HandleDScan)
-		mux.HandleFunc("/api/intel", handler.HandleIntel)
 
 		log.Println("HTTP server listening on :8080")
 

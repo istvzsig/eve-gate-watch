@@ -5,15 +5,21 @@ import (
 	"net/http"
 
 	"github.com/istvzsig/eve-gate-watch/internal/intel"
+	"github.com/istvzsig/eve-gate-watch/internal/systems"
 )
 
 type Handler struct {
-	intelService *intel.Service
+	intelService   *intel.Service
+	systemsService *systems.Service
 }
 
-func NewHandler(intelService *intel.Service) *Handler {
+func NewHandler(
+	intelService *intel.Service,
+	systemsService *systems.Service,
+) *Handler {
 	return &Handler{
-		intelService: intelService,
+		intelService:   intelService,
+		systemsService: systemsService,
 	}
 }
 
@@ -55,6 +61,23 @@ func (h *Handler) HandleRecentPVP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if err := json.NewEncoder(w).Encode(result); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (h *Handler) HandleSystems(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	query := r.URL.Query().Get("q")
+
+	results := h.systemsService.Search(query)
+
+	w.Header().Set("Content-Type", "application/json")
+
+	if err := json.NewEncoder(w).Encode(results); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

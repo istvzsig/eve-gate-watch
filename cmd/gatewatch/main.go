@@ -9,16 +9,23 @@ import (
 
 	"github.com/istvzsig/eve-gate-watch/external/esi"
 	"github.com/istvzsig/eve-gate-watch/external/zkill"
+	"github.com/istvzsig/eve-gate-watch/internal/data"
 	"github.com/istvzsig/eve-gate-watch/internal/discord"
 	"github.com/istvzsig/eve-gate-watch/internal/dscan"
 	"github.com/istvzsig/eve-gate-watch/internal/httpapi"
 	"github.com/istvzsig/eve-gate-watch/internal/intel"
+	"github.com/istvzsig/eve-gate-watch/internal/systems"
 )
 
 const (
 	esiBaseURL = "https://esi.evetech.net/latest"
 	zkillURL   = "https://zkillboard.com/api"
 )
+
+var _ data.Repository = (*data.MemoryRepository)(nil)
+var _ dscan.Scanner = (*esi.ESIClient)(nil)
+var _ zkill.SystemResolver = (*esi.ESIClient)(nil)
+var _ zkill.TypeResolver = (*esi.ESIClient)(nil)
 
 func main() {
 	token := os.Getenv("DISCORD_BOT_TOKEN")
@@ -27,22 +34,44 @@ func main() {
 	}
 
 	esiClient := esi.NewESIClient(esiBaseURL)
-
-	var _ dscan.Scanner = (*esi.ESIClient)(nil)
-	var _ zkill.SystemResolver = (*esi.ESIClient)(nil)
-	var _ zkill.TypeResolver = (*esi.ESIClient)(nil)
-
 	zkillClient := zkill.NewClient(zkillURL, esiClient, esiClient)
+	memoryRepository := data.NewMemoryRepository([]string{
+		"Jita",
+		"Amarr",
+		"Dodixie",
+		"Rens",
+		"Hek",
 
+		"Tama",
+		"Nourvukaiken",
+		"Uedama",
+		"Niarja",
+		"Ahbazon",
+
+		"Old Man Star",
+		"Ishomilken",
+		"Sujarento",
+
+		"1DQ1-A",
+		"T5ZI-S",
+		"MJ-5F9",
+		"HED-GP",
+
+		"Thera",
+		"Turnur",
+		"J123456",
+	})
 	intelService := intel.NewService(esiClient, zkillClient)
+	systemsService := systems.NewService(memoryRepository)
 
 	// Http api
 	go func() {
 		mux := http.NewServeMux()
-		handler := httpapi.NewHandler(intelService)
+		httpHandler := httpapi.NewHandler(intelService, systemsService)
 
-		mux.HandleFunc("/api/dscan", handler.HandleDScan)
-		mux.HandleFunc("/api/pvp", handler.HandleRecentPVP)
+		mux.HandleFunc("/api/dscan", httpHandler.HandleDScan)
+		mux.HandleFunc("/api/pvp", httpHandler.HandleRecentPVP)
+		mux.HandleFunc("/api/systems", httpHandler.HandleSystems)
 
 		log.Println("HTTP server listening on :8080")
 
@@ -58,12 +87,13 @@ func main() {
 		return
 	}
 
-	discord.RegisterHandlers(botSession, intelService)
-
 	if err := discord.OpenSession(botSession); err != nil {
 		log.Fatalf("open Discord session: %v", err)
 		return
 	}
+
+	discord.RegisterPrefixCommands(botSession, intelService, systemsService)
+	discord.RegisterSlashCommands(botSession)
 
 	log.Println("Gatewatch bot is online")
 

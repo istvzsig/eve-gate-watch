@@ -28,6 +28,7 @@ Returns:
 
 ```text
 GET /api/dscan?system=Tama
+GET /api/pvp?system=Tama
 ```
 
 ## Data Source
@@ -52,6 +53,7 @@ CLI:
 
 ```bash
 curl -sS -X GET "http://localhost:8080/api/dscan?system=<system>"
+curl -sS -X GET "http://localhost:8080/api/pvp?system=<system>"
 ```
 
 The test script queries the Gatewatch HTTP API and returns the system intelligence data for the requested system.

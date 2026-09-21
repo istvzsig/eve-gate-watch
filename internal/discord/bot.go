@@ -12,7 +12,6 @@ import (
 
 const (
 	PingCommand  = "!ping"
-	IntelCommand = "!intel"
 	DScanCommand = "!dscan"
 )
 
@@ -70,16 +69,9 @@ func dispatchCommands(
 		return
 	}
 
-	// intel
-	// if msgContent == IntelCommand || strings.HasPrefix(msgContent, IntelCommand+" ") {
-	// 	dispatchIntelCommand(session, message, intelService)
-	// 	return
-
-	// }
-
 	// dscan
 	if msgContent == DScanCommand || strings.HasPrefix(msgContent, DScanCommand+" ") {
-		dispatchDscanCommand(session, message, intelService)
+		dispatchDScanCommand(session, message, intelService)
 		return
 	}
 
@@ -95,7 +87,7 @@ func dispatchPingCommand(session *discordgo.Session, message *discordgo.MessageC
 	}
 }
 
-func dispatchDscanCommand(
+func dispatchDScanCommand(
 	session *discordgo.Session,
 	message *discordgo.MessageCreate,
 	intelService *intel.Service,
@@ -107,6 +99,18 @@ func dispatchDscanCommand(
 	result, err := intelService.DScan(systemName)
 	if err != nil {
 		log.Printf("dscan: %v", err)
+
+		_, sendErr := session.ChannelMessageSend(
+			message.ChannelID,
+			fmt.Sprintf(
+				"System `%s` not found.",
+				systemName,
+			),
+		)
+		if sendErr != nil {
+			log.Printf("send dscan error: %v", sendErr)
+		}
+
 		return
 	}
 
@@ -122,13 +126,13 @@ func dispatchDscanCommand(
 }
 
 func formatDScan(result dscan.DScanResult) string {
-	security := formatSecurity(result.SecurityStatus)
-
 	return fmt.Sprintf(
-		"```ansi\n"+
+		"```text\n"+
 			"%s SYSTEM INTELLIGENCE\n"+
 			"--------------------------------\n"+
-			"Security           %s\n"+
+			"Region             %s\n"+
+			"Constellation      %s\n"+
+			"Security           %.1f %s\n"+
 			"Planets            %d\n"+
 			"Stargates          %d\n"+
 			"Stations           %d\n"+
@@ -141,7 +145,10 @@ func formatDScan(result dscan.DScanResult) string {
 			"NPC kills          %d\n"+
 			"```",
 		strings.ToUpper(result.SystemName),
-		security,
+		result.RegionName,
+		result.ConstellationName,
+		result.SecurityStatus,
+		securityClass(result.SecurityStatus),
 		result.Planets,
 		result.Stargates,
 		result.Stations,
@@ -152,44 +159,13 @@ func formatDScan(result dscan.DScanResult) string {
 	)
 }
 
-func formatSecurity(value float64) string {
-	display := fmt.Sprintf("%.1f", value)
-
+func securityClass(value float64) string {
 	switch {
 	case value >= 0.5:
-		return fmt.Sprintf("\033[32m%s HIGH SEC\033[0m", display)
+		return "HIGH SEC"
 	case value > 0.0:
-		return fmt.Sprintf("\033[33m%s LOW SEC\033[0m", display)
+		return "LOW SEC"
 	default:
-		return fmt.Sprintf("\033[31m%s NULL SEC\033[0m", display)
+		return "NULL SEC"
 	}
 }
-
-// func dispatchIntelCommand(
-// 	session *discordgo.Session,
-// 	message *discordgo.MessageCreate,
-// 	intelService *intel.Service,
-// ) {
-// 	systemName := strings.TrimSpace(
-// 		strings.TrimPrefix(message.Content, IntelCommand),
-// 	)
-
-// 	recentIntel, err := intelService.RecentIntel(
-// 		context.Background(),
-// 		systemName,
-// 	)
-// 	if err != nil {
-// 		log.Printf("intel query: %v", err)
-// 		return
-// 	}
-
-// 	result := formatIntel(recentIntel)
-
-// 	_, err = session.ChannelMessageSend(
-// 		message.ChannelID,
-// 		result,
-// 	)
-// 	if err != nil {
-// 		log.Printf("send intel message: %v", err)
-// 	}
-// }

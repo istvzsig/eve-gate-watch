@@ -38,12 +38,21 @@ type resolveResponse struct {
 }
 
 type systemResponse struct {
-	Name           string  `json:"name"`
-	SecurityStatus float64 `json:"security_status"`
-	Planets        []struct {
-	} `json:"planets"`
-	Stargates []int64 `json:"stargates"`
-	Stations  []int64 `json:"stations"`
+	Name            string     `json:"name"`
+	ConstellationID int64      `json:"constellation_id"`
+	SecurityStatus  float64    `json:"security_status"`
+	Planets         []struct{} `json:"planets"`
+	Stargates       []int64    `json:"stargates"`
+	Stations        []int64    `json:"stations"`
+}
+
+type constellationResponse struct {
+	Name     string `json:"name"`
+	RegionID int64  `json:"region_id"`
+}
+
+type regionResponse struct {
+	Name string `json:"name"`
 }
 
 type systemJumpsResponse struct {
@@ -75,6 +84,16 @@ func (s *ESIScanner) DScan(systemName string) (DScanResult, error) {
 		return DScanResult{}, err
 	}
 
+	constellation, err := s.getConstellation(system.ConstellationID)
+	if err != nil {
+		return DScanResult{}, err
+	}
+
+	region, err := s.getRegion(constellation.RegionID)
+	if err != nil {
+		return DScanResult{}, err
+	}
+
 	jumps, err := s.getSystemJumps(systemID)
 	if err != nil {
 		return DScanResult{}, err
@@ -86,15 +105,17 @@ func (s *ESIScanner) DScan(systemName string) (DScanResult, error) {
 	}
 
 	return DScanResult{
-		SystemName:     resolvedName,
-		SecurityStatus: system.SecurityStatus,
-		Planets:        len(system.Planets),
-		Stargates:      len(system.Stargates),
-		Stations:       len(system.Stations),
-		ShipJumps:      jumps.ShipJumps,
-		ShipKills:      kills.ShipKills,
-		PodKills:       kills.PodKills,
-		NPCKills:       kills.NPCKills,
+		SystemName:        resolvedName,
+		RegionName:        region.Name,
+		ConstellationName: constellation.Name,
+		SecurityStatus:    system.SecurityStatus,
+		Planets:           len(system.Planets),
+		Stargates:         len(system.Stargates),
+		Stations:          len(system.Stations),
+		ShipJumps:         jumps.ShipJumps,
+		ShipKills:         kills.ShipKills,
+		PodKills:          kills.PodKills,
+		NPCKills:          kills.NPCKills,
 	}, nil
 }
 
@@ -184,6 +205,32 @@ func (s *ESIScanner) getSystemKills(
 		PodKills:  0,
 		NPCKills:  0,
 	}, nil
+}
+
+func (s *ESIScanner) getConstellation(
+	constellationID int64,
+) (constellationResponse, error) {
+	var response constellationResponse
+
+	err := s.getJSON(
+		fmt.Sprintf("/universe/constellations/%d/", constellationID),
+		&response,
+	)
+
+	return response, err
+}
+
+func (s *ESIScanner) getRegion(
+	regionID int64,
+) (regionResponse, error) {
+	var response regionResponse
+
+	err := s.getJSON(
+		fmt.Sprintf("/universe/regions/%d/", regionID),
+		&response,
+	)
+
+	return response, err
 }
 
 func (s *ESIScanner) getJSON(

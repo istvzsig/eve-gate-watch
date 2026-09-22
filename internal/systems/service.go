@@ -1,6 +1,7 @@
 package systems
 
 import (
+	"context"
 	"strings"
 
 	"github.com/istvzsig/eve-gate-watch/internal/data"
@@ -11,27 +12,15 @@ type Service struct {
 }
 
 func NewService(repo data.Repository) *Service {
-	return &Service{
-		repo: repo,
-	}
+	return &Service{repo: repo}
 }
 
-func (s *Service) Search(query string) []string {
-	query = strings.TrimSpace(strings.ToLower(query))
+func (s *Service) Search(ctx context.Context, query string) ([]data.System, error) {
+	query = strings.TrimSpace(query)
 
 	if query == "" {
-		return []string{}
+		return []data.System{}, nil
 	}
 
-	systems := s.repo.LoadSystems()
-
-	results := make([]string, 0)
-
-	for _, system := range systems {
-		if strings.HasPrefix(strings.ToLower(system), query) {
-			results = append(results, system)
-		}
-	}
-
-	return results
+	return s.repo.SearchSystems(ctx, query)
 }

@@ -73,7 +73,7 @@ func (h *Handler) HandleSystems(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query().Get("q")
 
-	results := h.systemsService.Search(query)
+	results, _ := h.systemsService.Search(r.Context(), query)
 
 	w.Header().Set("Content-Type", "application/json")
 

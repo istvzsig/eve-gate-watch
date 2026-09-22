@@ -1,6 +1,7 @@
 package discord
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strings"
@@ -309,7 +310,11 @@ func dispatchSystemAutocomplete(
 
 	query := data.Options[0].StringValue()
 
-	results := systemsService.Search(query)
+	results, err := systemsService.Search(context.Background(), query)
+	if err != nil {
+		log.Printf("system autocomplete search failed: %v", err)
+		return
+	}
 
 	choices := make(
 		[]*discordgo.ApplicationCommandOptionChoice,
@@ -321,8 +326,8 @@ func dispatchSystemAutocomplete(
 		choices = append(
 			choices,
 			&discordgo.ApplicationCommandOptionChoice{
-				Name:  system,
-				Value: system,
+				Name:  system.Name,
+				Value: system.Name,
 			},
 		)
 
@@ -331,7 +336,7 @@ func dispatchSystemAutocomplete(
 		}
 	}
 
-	err := session.InteractionRespond(
+	err = session.InteractionRespond(
 		interaction.Interaction,
 		&discordgo.InteractionResponse{
 			Type: discordgo.InteractionApplicationCommandAutocompleteResult,

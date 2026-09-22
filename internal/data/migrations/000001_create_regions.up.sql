@@ -1,0 +1,4 @@
+CREATE TABLE regions (
+	id BIGINT PRIMARY KEY,
+	name TEXT NOT NULL UNIQUE
+);

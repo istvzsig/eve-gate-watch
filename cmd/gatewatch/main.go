@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
 	"os"
@@ -15,6 +16,8 @@ import (
 	"github.com/istvzsig/eve-gate-watch/internal/httpapi"
 	"github.com/istvzsig/eve-gate-watch/internal/intel"
 	"github.com/istvzsig/eve-gate-watch/internal/systems"
+
+	_ "github.com/lib/pq"
 )
 
 const (
@@ -22,7 +25,7 @@ const (
 	zkillURL   = "https://zkillboard.com/api"
 )
 
-var _ data.Repository = (*data.MemoryRepository)(nil)
+var _ data.Repository = (*data.PostgresRepository)(nil)
 var _ dscan.Scanner = (*esi.ESIClient)(nil)
 var _ zkill.SystemResolver = (*esi.ESIClient)(nil)
 var _ zkill.TypeResolver = (*esi.ESIClient)(nil)
@@ -35,34 +38,26 @@ func main() {
 
 	esiClient := esi.NewESIClient(esiBaseURL)
 	zkillClient := zkill.NewClient(zkillURL, esiClient, esiClient)
-	memoryRepository := data.NewMemoryRepository([]string{
-		"Jita",
-		"Amarr",
-		"Dodixie",
-		"Rens",
-		"Hek",
 
-		"Tama",
-		"Nourvukaiken",
-		"Uedama",
-		"Niarja",
-		"Ahbazon",
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		log.Fatal("DATABASE_URL is required")
+	}
 
-		"Old Man Star",
-		"Ishomilken",
-		"Sujarento",
+	db, err := sql.Open("postgres", databaseURL)
+	if err != nil {
+		log.Fatalf("open database: %v", err)
+	}
+	defer db.Close()
 
-		"1DQ1-A",
-		"T5ZI-S",
-		"MJ-5F9",
-		"HED-GP",
+	if err := db.Ping(); err != nil {
+		log.Fatalf("database connection: %v", err)
+	}
 
-		"Thera",
-		"Turnur",
-		"J123456",
-	})
+	postgresRepository := data.NewPostgresRepository(db)
+
 	intelService := intel.NewService(esiClient, zkillClient)
-	systemsService := systems.NewService(memoryRepository)
+	systemsService := systems.NewService(postgresRepository)
 
 	// Http api
 	go func() {

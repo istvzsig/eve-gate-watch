@@ -2,3 +2,4 @@
 .env.bkp
 *bin*
 gatewatch
+*.zip
